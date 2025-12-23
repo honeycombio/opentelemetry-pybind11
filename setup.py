@@ -1,0 +1,69 @@
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
+
+
+class CMakeExtension(Extension):
+    def __init__(self, name, sourcedir=""):
+        Extension.__init__(self, name, sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)
+
+
+class CMakeBuild(build_ext):
+    def build_extension(self, ext):
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+
+        # Required for auto-detection & inclusion of auxiliary "native" libs
+        if not extdir.endswith(os.path.sep):
+            extdir += os.path.sep
+
+        debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
+        cfg = "Debug" if debug else "Release"
+
+        cmake_args = [
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
+            f"-DPYTHON_EXECUTABLE={sys.executable}",
+            f"-DCMAKE_BUILD_TYPE={cfg}",
+        ]
+
+        build_args = []
+
+        if sys.platform.startswith("darwin"):
+            # Cross-compile support for macOS
+            archs = os.environ.get("ARCHFLAGS", "")
+            if archs:
+                cmake_args.append(f"-DCMAKE_OSX_ARCHITECTURES={archs}")
+
+        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
+        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
+            build_args += ["-j4"]
+
+        if not os.path.exists(self.build_temp):
+            os.makedirs(self.build_temp)
+
+        subprocess.check_call(
+            ["cmake", ext.sourcedir] + cmake_args, cwd=self.build_temp
+        )
+        subprocess.check_call(
+            ["cmake", "--build", "."] + build_args, cwd=self.build_temp
+        )
+
+
+setup(
+    name="otel-cpp-tracer",
+    version="0.1.0",
+    author="Your Name",
+    author_email="your.email@example.com",
+    description="Python bindings for OpenTelemetry C++ SDK",
+    long_description=open("README.md").read() if os.path.exists("README.md") else "",
+    long_description_content_type="text/markdown",
+    ext_modules=[CMakeExtension("otel_cpp_tracer")],
+    cmdclass={"build_ext": CMakeBuild},
+    zip_safe=False,
+    python_requires=">=3.7",
+    install_requires=[],
+)
