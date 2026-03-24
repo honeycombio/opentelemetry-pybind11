@@ -1,7 +1,7 @@
 # OpenTelemetry C++ Python Bindings
 
 [![OSS Lifecycle](https://img.shields.io/osslifecycle/honeycombio/opentelemetry-pybind11?color=success)](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md)
-[![CircleCI](https://circleci.com/gh/honeycombio/opentelemetry-pybind11.svg?style=shield)](https://circleci.com/gh/honeycombio/opentelemetry-pybind11)
+[![Build](https://github.com/honeycombio/opentelemetry-pybind11/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/honeycombio/opentelemetry-pybind11/actions/workflows/build-wheels.yml)
 
 Python bindings for the OpenTelemetry C++ SDK, providing high-performance tracing capabilities through a Pythonic interface. This library is **experimental**.
 
