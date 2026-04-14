@@ -106,7 +106,7 @@ def main():
     if py_major >= 3 and py_minor >= 7:
         print(f"✓ Python {py_version}")
     else:
-        print(f"✗ Python {py_version} (requires >= 3.7)")
+        print(f"✗ Python {py_version} (requires >= 3.10)")
         all_ok = False
 
     # Check CMake

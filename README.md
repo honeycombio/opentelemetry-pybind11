@@ -232,7 +232,7 @@ pip install -e . --force-reinstall --no-deps
 
 ### Requirements
 
-- Python >= 3.7
+- Python >= 3.10
 - CMake >= 3.15
 - C++17 compatible compiler
 - OpenTelemetry C++ SDK
