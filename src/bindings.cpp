@@ -50,6 +50,29 @@ void set_span_attribute(otel_wrapper::SpanWrapper& span,
             "Attribute value must be str, bool, int, float, or a homogeneous sequence thereof");
     }
 }
+
+// Build an AttributeValue map from a Python dict, supporting the same types as set_attribute.
+std::map<std::string, opentelemetry::common::AttributeValue>
+build_attribute_map(py::dict d) {
+    std::map<std::string, opentelemetry::common::AttributeValue> result;
+    for (auto item : d) {
+        std::string key = item.first.cast<std::string>();
+        py::object val  = py::reinterpret_borrow<py::object>(item.second);
+        if (py::isinstance<py::bool_>(val)) {
+            result[key] = val.cast<bool>();
+        } else if (py::isinstance<py::int_>(val)) {
+            result[key] = val.cast<int64_t>();
+        } else if (py::isinstance<py::float_>(val)) {
+            result[key] = val.cast<double>();
+        } else if (py::isinstance<py::str>(val)) {
+            result[key] = val.cast<std::string>();
+        } else {
+            throw py::type_error(
+                "Attribute value must be str, bool, int, or float");
+        }
+    }
+    return result;
+}
 }  // namespace
 
 PYBIND11_MODULE(otel_cpp_tracer, m) {
@@ -151,9 +174,9 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
                 const std::string& name,
                 py::object attributes,
                 py::object timestamp) {
-                 std::map<std::string, std::string> attrs;
+                 std::map<std::string, opentelemetry::common::AttributeValue> attrs;
                  if (!attributes.is_none()) {
-                     attrs = attributes.cast<std::map<std::string, std::string>>();
+                     attrs = build_attribute_map(attributes.cast<py::dict>());
                  }
                  uint64_t ts_ns = 0;
                  if (!timestamp.is_none()) {
@@ -161,12 +184,10 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
                  }
                  if (ts_ns != 0) {
                      self.add_event(name, attrs, ts_ns);
+                 } else if (!attrs.empty()) {
+                     self.add_event(name, attrs);
                  } else {
-                     if (!attrs.empty()) {
-                         self.add_event(name, attrs);
-                     } else {
-                         self.add_event(name);
-                     }
+                     self.add_event(name);
                  }
              },
              py::arg("name"),
@@ -238,6 +259,20 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
 
         .def("get_span_context", &otel_wrapper::SpanWrapper::get_span_context,
              "Get the SpanContext for this span (trace_id, span_id, trace_flags, is_remote, is_valid)")
+
+        .def("add_link",
+             [](otel_wrapper::SpanWrapper& self,
+                const otel_wrapper::SpanContextWrapper& context,
+                py::object attributes) {
+                 std::map<std::string, opentelemetry::common::AttributeValue> attrs;
+                 if (!attributes.is_none()) {
+                     attrs = build_attribute_map(attributes.cast<py::dict>());
+                 }
+                 self.add_link(context, attrs);
+             },
+             py::arg("context"),
+             py::arg("attributes") = py::none(),
+             "Add a link to another span. Requires OpenTelemetry C++ ABI v2; no-op on ABI v1.")
 
         .def("__enter__", [](std::shared_ptr<otel_wrapper::SpanWrapper> self) {
             return self;

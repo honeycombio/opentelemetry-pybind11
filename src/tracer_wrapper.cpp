@@ -248,27 +248,49 @@ void SpanWrapper::add_event(const std::string& name, uint64_t timestamp_ns) {
 }
 
 void SpanWrapper::add_event(const std::string& name,
-                            const std::map<std::string, std::string>& attributes) {
+                            const std::map<std::string, opentelemetry::common::AttributeValue>& attributes) {
     if (span_) {
-        std::map<std::string, opentelemetry::common::AttributeValue> attrs;
-        for (const auto& [key, value] : attributes) {
-            attrs[key] = value;
-        }
-        span_->AddEvent(name, attrs);
+        span_->AddEvent(name, attributes);
     }
 }
 
 void SpanWrapper::add_event(const std::string& name,
-                            const std::map<std::string, std::string>& attributes,
+                            const std::map<std::string, opentelemetry::common::AttributeValue>& attributes,
                             uint64_t timestamp_ns) {
     if (span_) {
         opentelemetry::common::SystemTimestamp ts{std::chrono::nanoseconds(timestamp_ns)};
-        std::map<std::string, opentelemetry::common::AttributeValue> attrs;
-        for (const auto& [key, value] : attributes) {
-            attrs[key] = value;
-        }
-        span_->AddEvent(name, ts, attrs);
+        span_->AddEvent(name, ts, attributes);
     }
+}
+
+void SpanWrapper::add_link(const SpanContextWrapper& link_context,
+                           const std::map<std::string, opentelemetry::common::AttributeValue>& attributes) {
+#if OPENTELEMETRY_ABI_VERSION_NO >= 2
+    if (!span_) return;
+
+    auto hex_to_bytes = [](const std::string& hex) -> std::vector<uint8_t> {
+        std::vector<uint8_t> bytes;
+        for (size_t i = 0; i + 1 < hex.size(); i += 2)
+            bytes.push_back(static_cast<uint8_t>(std::stoi(hex.substr(i, 2), nullptr, 16)));
+        return bytes;
+    };
+
+    auto tid_bytes = hex_to_bytes(link_context.get_trace_id());
+    auto sid_bytes = hex_to_bytes(link_context.get_span_id());
+    if (tid_bytes.size() != 16 || sid_bytes.size() != 8) return;
+
+    trace_api::SpanContext sc{
+        trace_api::TraceId{tid_bytes},
+        trace_api::SpanId{sid_bytes},
+        trace_api::TraceFlags{link_context.get_trace_flags()},
+        link_context.get_is_remote()
+    };
+
+    span_->AddLink(sc, attributes);
+#else
+    (void)link_context;
+    (void)attributes;
+#endif
 }
 
 void SpanWrapper::set_status(const Status& status) {

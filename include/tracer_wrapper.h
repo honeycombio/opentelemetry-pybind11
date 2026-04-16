@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <pybind11/pybind11.h>
+#include "opentelemetry/common/attribute_value.h"
 #include "opentelemetry/trace/provider.h"
 #include "opentelemetry/trace/tracer.h"
 #include "opentelemetry/trace/scope.h"
@@ -130,8 +131,12 @@ public:
 
     void add_event(const std::string& name);
     void add_event(const std::string& name, uint64_t timestamp_ns);
-    void add_event(const std::string& name, const std::map<std::string, std::string>& attributes);
-    void add_event(const std::string& name, const std::map<std::string, std::string>& attributes, uint64_t timestamp_ns);
+    void add_event(const std::string& name, const std::map<std::string, opentelemetry::common::AttributeValue>& attributes);
+    void add_event(const std::string& name, const std::map<std::string, opentelemetry::common::AttributeValue>& attributes, uint64_t timestamp_ns);
+
+    // add_link requires OpenTelemetry C++ ABI v2. On ABI v1 the call is a no-op.
+    void add_link(const SpanContextWrapper& link_context,
+                  const std::map<std::string, opentelemetry::common::AttributeValue>& attributes = {});
 
     void set_status(const Status& status);
     void end(std::optional<uint64_t> end_time_ns = std::nullopt);
