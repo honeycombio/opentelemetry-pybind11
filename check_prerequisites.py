@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Honeycomb Authors <support@honeycomb.io>
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Script to check if all prerequisites for building the OpenTelemetry C++ bindings are met.
 """
