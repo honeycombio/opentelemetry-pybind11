@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Honeycomb Authors <support@honeycomb.io>
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Monkey patch for OpenTelemetry Python API to use C++ context.
 
