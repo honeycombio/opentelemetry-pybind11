@@ -195,6 +195,70 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
              py::arg("timestamp") = py::none(),
              "Add an event to the span with optional attributes dict and optional timestamp (nanoseconds since UNIX epoch)")
 
+        .def("record_exception",
+             [](otel_wrapper::SpanWrapper& self,
+                py::object exception,
+                py::object attributes,
+                py::object timestamp,
+                bool escaped) {
+                 // Local strings must outlive attrs and the add_event call
+                 std::string type_str, message_str, stacktrace_str;
+
+                 // exception.type: use __qualname__ if available, else __name__
+                 auto exc_type = py::type::of(exception);
+                 if (py::hasattr(exc_type, "__qualname__")) {
+                     type_str = exc_type.attr("__qualname__").cast<std::string>();
+                 } else {
+                     type_str = exc_type.attr("__name__").cast<std::string>();
+                 }
+
+                 // exception.message
+                 message_str = py::str(exception).cast<std::string>();
+
+                 // exception.stacktrace
+                 try {
+                     auto tb_mod = py::module_::import("traceback");
+                     py::object lines = tb_mod.attr("format_exception")(
+                         exc_type, exception, exception.attr("__traceback__"));
+                     stacktrace_str = py::str("").attr("join")(lines).cast<std::string>();
+                 } catch (...) {}
+
+                 std::map<std::string, opentelemetry::common::AttributeValue> attrs;
+                 attrs["exception.type"] = opentelemetry::nostd::string_view(type_str);
+                 attrs["exception.message"] = opentelemetry::nostd::string_view(message_str);
+                 if (!stacktrace_str.empty()) {
+                     attrs["exception.stacktrace"] = opentelemetry::nostd::string_view(stacktrace_str);
+                 }
+                 if (escaped) {
+                     attrs["exception.escaped"] = true;
+                 }
+
+                 // Merge user-provided attributes (may override semconv attributes)
+                 if (!attributes.is_none()) {
+                     auto user_attrs = build_attribute_map(attributes.cast<py::dict>());
+                     for (auto& [k, v] : user_attrs) {
+                         attrs[k] = v;
+                     }
+                 }
+
+                 uint64_t ts_ns = 0;
+                 if (!timestamp.is_none()) {
+                     ts_ns = timestamp.cast<uint64_t>();
+                 }
+                 if (ts_ns != 0) {
+                     self.add_event("exception", attrs, ts_ns);
+                 } else {
+                     self.add_event("exception", attrs);
+                 }
+             },
+             py::arg("exception"),
+             py::arg("attributes") = py::none(),
+             py::arg("timestamp") = py::none(),
+             py::arg("escaped") = false,
+             "Record an exception as a span event per OTel semconv. "
+             "Adds an 'exception' event with exception.type, exception.message, "
+             "and exception.stacktrace attributes.")
+
         .def("set_status", [](otel_wrapper::SpanWrapper& self, py::object status_obj, py::object description_override) {
             // Support both our Status class and Python's opentelemetry.trace.status.Status
             if (py::isinstance<otel_wrapper::Status>(status_obj)) {
