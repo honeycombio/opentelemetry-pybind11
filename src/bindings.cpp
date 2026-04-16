@@ -195,12 +195,17 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
              py::arg("timestamp") = py::none(),
              "Add an event to the span with optional attributes dict and optional timestamp (nanoseconds since UNIX epoch)")
 
-        .def("set_status", [](otel_wrapper::SpanWrapper& self, py::object status_obj) {
+        .def("set_status", [](otel_wrapper::SpanWrapper& self, py::object status_obj, py::object description_override) {
             // Support both our Status class and Python's opentelemetry.trace.status.Status
             if (py::isinstance<otel_wrapper::Status>(status_obj)) {
                 // Our Status class
                 auto status = status_obj.cast<otel_wrapper::Status>();
-                self.set_status(status);
+                if (!description_override.is_none()) {
+                    otel_wrapper::Status overridden(status.get_status_code(), description_override.cast<std::string>());
+                    self.set_status(overridden);
+                } else {
+                    self.set_status(status);
+                }
             } else if (py::hasattr(status_obj, "status_code") && py::hasattr(status_obj, "description")) {
                 // Python opentelemetry.trace.status.Status or compatible object
                 auto status_code = status_obj.attr("status_code");
@@ -214,9 +219,11 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
                     code_value = status_code.cast<int>();
                 }
 
-                // Extract description (handle None)
+                // Extract description: prefer override, then status object's description
                 std::string desc_str;
-                if (!description.is_none()) {
+                if (!description_override.is_none()) {
+                    desc_str = description_override.cast<std::string>();
+                } else if (!description.is_none()) {
                     desc_str = description.cast<std::string>();
                 }
 
@@ -225,8 +232,8 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
             } else {
                 throw py::type_error("set_status expects a Status object with status_code and description attributes");
             }
-        }, py::arg("status"),
-           "Set the status of the span. Accepts either otel_cpp_tracer.Status or opentelemetry.trace.status.Status")
+        }, py::arg("status"), py::arg("description") = py::none(),
+           "Set the status of the span. Accepts either otel_cpp_tracer.Status or opentelemetry.trace.status.Status. Optional description overrides the status description.")
 
         .def("update_name", &otel_wrapper::SpanWrapper::update_name,
              py::arg("name"),
