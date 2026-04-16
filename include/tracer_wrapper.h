@@ -129,7 +129,9 @@ public:
     void set_attribute(const std::string& key, const std::vector<bool>& value);
 
     void add_event(const std::string& name);
+    void add_event(const std::string& name, uint64_t timestamp_ns);
     void add_event(const std::string& name, const std::map<std::string, std::string>& attributes);
+    void add_event(const std::string& name, const std::map<std::string, std::string>& attributes, uint64_t timestamp_ns);
 
     void set_status(const Status& status);
     void end();

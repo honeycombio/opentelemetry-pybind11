@@ -146,16 +146,33 @@ PYBIND11_MODULE(otel_cpp_tracer, m) {
              py::arg("attributes"),
              "Set multiple attributes on the span from a dict, matching opentelemetry.trace.Span.set_attributes.")
 
-        .def("add_event", py::overload_cast<const std::string&>(
-                 &otel_wrapper::SpanWrapper::add_event),
+        .def("add_event",
+             [](otel_wrapper::SpanWrapper& self,
+                const std::string& name,
+                py::object attributes,
+                py::object timestamp) {
+                 std::map<std::string, std::string> attrs;
+                 if (!attributes.is_none()) {
+                     attrs = attributes.cast<std::map<std::string, std::string>>();
+                 }
+                 uint64_t ts_ns = 0;
+                 if (!timestamp.is_none()) {
+                     ts_ns = timestamp.cast<uint64_t>();
+                 }
+                 if (ts_ns != 0) {
+                     self.add_event(name, attrs, ts_ns);
+                 } else {
+                     if (!attrs.empty()) {
+                         self.add_event(name, attrs);
+                     } else {
+                         self.add_event(name);
+                     }
+                 }
+             },
              py::arg("name"),
-             "Add an event to the span")
-
-        .def("add_event", py::overload_cast<const std::string&,
-                 const std::map<std::string, std::string>&>(
-                 &otel_wrapper::SpanWrapper::add_event),
-             py::arg("name"), py::arg("attributes"),
-             "Add an event with attributes to the span")
+             py::arg("attributes") = py::none(),
+             py::arg("timestamp") = py::none(),
+             "Add an event to the span with optional attributes dict and optional timestamp (nanoseconds since UNIX epoch)")
 
         .def("set_status", [](otel_wrapper::SpanWrapper& self, py::object status_obj) {
             // Support both our Status class and Python's opentelemetry.trace.status.Status

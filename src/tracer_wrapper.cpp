@@ -240,6 +240,13 @@ void SpanWrapper::add_event(const std::string& name) {
     }
 }
 
+void SpanWrapper::add_event(const std::string& name, uint64_t timestamp_ns) {
+    if (span_) {
+        opentelemetry::common::SystemTimestamp ts{std::chrono::nanoseconds(timestamp_ns)};
+        span_->AddEvent(name, ts);
+    }
+}
+
 void SpanWrapper::add_event(const std::string& name,
                             const std::map<std::string, std::string>& attributes) {
     if (span_) {
@@ -248,6 +255,19 @@ void SpanWrapper::add_event(const std::string& name,
             attrs[key] = value;
         }
         span_->AddEvent(name, attrs);
+    }
+}
+
+void SpanWrapper::add_event(const std::string& name,
+                            const std::map<std::string, std::string>& attributes,
+                            uint64_t timestamp_ns) {
+    if (span_) {
+        opentelemetry::common::SystemTimestamp ts{std::chrono::nanoseconds(timestamp_ns)};
+        std::map<std::string, opentelemetry::common::AttributeValue> attrs;
+        for (const auto& [key, value] : attributes) {
+            attrs[key] = value;
+        }
+        span_->AddEvent(name, ts, attrs);
     }
 }
 
