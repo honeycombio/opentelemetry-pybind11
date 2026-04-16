@@ -17,13 +17,31 @@ license = "Apache-2.0"
 Homepage = "https://github.com/honeycombio/opentelemetry-pybind11"
 
 [tool.cibuildwheel]
-build = ["cp310-*", "cp311-*", "cp312-*"]
+build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
 skip = "*-musllinux_*"
 build-verbosity = 1
+before-build = "pip install -r requirements-dev.txt"
+environment = { PIP_ONLY_BINARY="cmake" }
+test-command = "python -c 'import otel_cpp_tracer; print(\"Import successful\")'"
+cache-path = "~/.cache/cibw-otel-deps"
 
 [tool.cibuildwheel.linux]
 before-all = """
   set -ex
+
+  # Per-arch cache directory so x86_64 and aarch64 never share compiled artifacts
+  ARCH=$(uname -m)
+  CACHE="$HOME/.cache/cibw-otel-deps/$ARCH"
+  STAMP="$CACHE/.built-curl-8.4.0-protobuf-3.21.12-json-3.11.3-otel-1.25.0"
+
+  if [ -f "$STAMP" ]; then
+    echo "Cache hit for $ARCH — restoring deps"
+    cp -a "$CACHE/usr/." /usr/local/
+    ldconfig || true
+    exit 0
+  fi
+
+  echo "Cache miss for $ARCH — building from source"
 
   # Install build tools and dependencies (check which package manager is available)
   if command -v yum &> /dev/null; then
@@ -84,24 +102,17 @@ before-all = """
   cmake --build build -j2
   cmake --install build
 
-  # Clean up
+  # Save compiled artifacts to cache
+  mkdir -p "$CACHE/usr"
+  cp -a /usr/local/. "$CACHE/usr/"
+  touch "$STAMP"
+
+  # Clean up source tarballs
   cd /
   rm -rf /tmp/*
 """
-
-before-build = "pip install -r requirements-dev.txt"
-
-environment = { PIP_ONLY_BINARY="cmake" }
-
-test-command = "python -c 'import otel_cpp_tracer; print(\"Import successful\")'"
 
 [tool.cibuildwheel.macos]
 before-all = """
   brew install opentelemetry-cpp
 """
-
-before-build = "pip install -r requirements-dev.txt"
-
-environment = { PIP_ONLY_BINARY="cmake" }
-
-test-command = "python -c 'import otel_cpp_tracer; print(\"Import successful\")'"

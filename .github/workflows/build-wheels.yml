@@ -34,6 +34,12 @@ jobs:
         with:
           platforms: arm64
 
+      - name: Cache cibuildwheel Linux deps
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/cibw-otel-deps
+          key: cibw-otel-deps-curl-8.4.0-protobuf-3.21.12-json-3.11.3-otel-1.25.0-${{ matrix.arch }}
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.21.3
         env:
