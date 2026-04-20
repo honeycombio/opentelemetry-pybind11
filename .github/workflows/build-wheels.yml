@@ -41,7 +41,7 @@ jobs:
           key: cibw-otel-deps-curl-8.4.0-protobuf-3.21.12-json-3.11.3-otel-1.25.0-${{ matrix.arch }}
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.3
+        uses: pypa/cibuildwheel@v2.23.4
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
@@ -74,7 +74,7 @@ jobs:
           brew install opentelemetry-cpp
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.3
+        uses: pypa/cibuildwheel@v2.23.4
         env:
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
 
