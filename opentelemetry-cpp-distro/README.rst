@@ -1,10 +1,10 @@
 OpenTelemetry Python/C++ Distro
-====================
+===============================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-distro.svg
-   :target: https://pypi.org/project/opentelemetry-distro/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-cpp-distro.svg
+   :target: https://pypi.org/project/opentelemetry-cpp-distro/
 
 Installation
 ------------
