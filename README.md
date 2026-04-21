@@ -61,145 +61,6 @@ python -m pip wheel . --wheel-dir=./build --no-deps -v
 pip install -v .
 ```
 
-## Quick Start
-
-### Basic Tracing
-
-```python
-import otel_cpp_tracer as otel
-
-# Create a tracer provider
-provider = otel.TracerProvider("my-service", "console")
-
-# Get a tracer
-tracer = provider.get_tracer("my-app", "1.0.0")
-
-# Start a span
-span = tracer.start_span("operation")
-span.set_attribute("user.id", "123")
-span.set_attribute("http.method", "GET")
-span.set_status(otel.StatusCode.OK)
-span.end()
-
-# Shutdown
-provider.shutdown()
-```
-
-### Using Context Managers
-
-```python
-import otel_cpp_tracer as otel
-
-provider = otel.TracerProvider("my-service", "console")
-tracer = provider.get_tracer("my-app")
-
-# Span automatically ends when exiting the context
-with tracer.start_span("database-query") as span:
-    span.set_attribute("db.system", "postgresql")
-    span.set_attribute("db.statement", "SELECT * FROM users")
-    span.add_event("Query executed")
-    span.set_status(otel.StatusCode.OK)
-
-provider.shutdown()
-```
-
-### Error Handling
-
-```python
-import otel_cpp_tracer as otel
-
-provider = otel.TracerProvider("my-service", "console")
-tracer = provider.get_tracer("my-app")
-
-try:
-    with tracer.start_span("risky-operation") as span:
-        span.set_attribute("operation.type", "file-processing")
-        # Do some work that might fail
-        raise ValueError("Something went wrong!")
-except ValueError:
-    # Span status is automatically set to ERROR
-    pass
-
-provider.shutdown()
-```
-
-### OTLP Exporter
-
-```python
-import otel_cpp_tracer as otel
-
-# Send traces to OTLP collector at localhost:4318
-provider = otel.TracerProvider("my-service", "otlp")
-tracer = provider.get_tracer("my-app")
-
-with tracer.start_span("api-call") as span:
-    span.set_attribute("http.url", "https://api.example.com/data")
-    span.set_attribute("http.status_code", 200)
-    span.set_status(otel.StatusCode.OK)
-
-# Important: Shutdown to flush buffered spans
-provider.shutdown()
-```
-
-## API Reference
-
-### TracerProvider
-
-```python
-TracerProvider(service_name: str, exporter_type: str = "console")
-```
-
-Creates a tracer provider with the specified service name and exporter.
-
-**Parameters:**
-- `service_name`: Name of your service
-- `exporter_type`: Either "console" or "otlp" (default: "console")
-
-**Methods:**
-- `get_tracer(name: str, version: str = "") -> Tracer`: Get a tracer instance
-- `shutdown()`: Shutdown the provider and flush all spans
-
-### Tracer
-
-```python
-tracer.start_span(name: str, attributes: dict = None) -> Span
-```
-
-Start a new span.
-
-**Parameters:**
-- `name`: Name of the span
-- `attributes`: Optional dictionary of initial attributes (string values only)
-
-### Span
-
-**Methods:**
-- `set_attribute(key: str, value: str|int|float|bool)`: Set an attribute
-- `add_event(name: str, attributes: dict = None)`: Add an event
-- `set_status(status_code: StatusCode, description: str = "")`: Set span status
-- `end()`: End the span explicitly
-- `is_recording() -> bool`: Check if span is recording
-- `get_trace_id() -> str`: Get the trace ID
-- `get_span_id() -> str`: Get the span ID
-
-**Context Manager:**
-Spans support context manager protocol (`with` statement) for automatic cleanup.
-
-### StatusCode
-
-Enum with values:
-- `StatusCode.UNSET`: Default status
-- `StatusCode.OK`: Successful operation
-- `StatusCode.ERROR`: Failed operation
-
-## Examples
-
-See the `examples/` directory for more comprehensive examples:
-- `basic_tracing.py`: Basic span creation and management
-- Context manager usage
-- Error handling
-- OTLP exporter configuration
-
 ## Project Structure
 
 ```
@@ -249,7 +110,6 @@ rm -rf CMakeCache.txt CMakeFiles/ cmake_install.cmake build/ dist/ *.egg-info/ *
 pip install -e .
 ```
 
-
 ## Performance Considerations
 
 - The C++ SDK provides better performance than pure Python implementations
@@ -259,18 +119,15 @@ pip install -e .
 
 ## Limitations
 
-- Context propagation between spans is not yet fully implemented
 - Only HTTP OTLP exporter is currently supported (not gRPC)
 - Metrics and logs are not yet supported (tracing only)
+- Links are not supported yet, requires an update to OTel C++'s ABI v2
 
 ## Future Enhancements
 
-- [ ] Full context propagation support
-- [ ] Parent-child span relationships
 - [ ] Baggage propagation
 - [ ] Metrics and logs support
 - [ ] gRPC OTLP exporter
-- [ ] Additional exporters (Jaeger, Zipkin)
 - [ ] Sampling configuration
 - [ ] Custom span processors
 
