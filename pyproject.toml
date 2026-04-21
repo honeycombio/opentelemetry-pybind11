@@ -25,8 +25,6 @@ before-build = """
 """
 environment = { PIP_ONLY_BINARY="cmake" }
 test-command = "python -c 'import otel_cpp_tracer; print(\"Import successful\")'"
-
-[tool.cibuildwheel.linux]
 before-all = """
   set -ex
 
@@ -45,18 +43,27 @@ before-all = """
 
   echo "Cache miss for $ARCH — building from source"
 
+
+  CURL_SSL_OPTS="--with-openssl"
+  INSTALLDIR="/usr/local"
   # Install build tools and dependencies (check which package manager is available)
   if command -v yum &> /dev/null; then
     # Try cmake first, fall back to cmake3
-    yum install -y cmake gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool || \
-    yum install -y cmake3 gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool
+    yum install -y cmake gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool libyaml-cpp-dev || \
+    yum install -y cmake3 gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool libyaml-cpp-dev
     # Create cmake symlink if only cmake3 exists
     if [ ! -f /usr/bin/cmake ] && [ -f /usr/bin/cmake3 ]; then
       ln -sf /usr/bin/cmake3 /usr/bin/cmake
     fi
   elif command -v apt-get &> /dev/null; then
     apt-get update
-    apt-get install -y cmake g++ libssl-dev libcurl4-openssl-dev zlib1g-dev wget autoconf automake libtool
+    apt-get install -y cmake g++ libssl-dev libcurl4-openssl-dev zlib1g-dev wget autoconf automake libtool libyaml-cpp-dev
+  elif command -v brew &> /dev/null; then
+    brew install cmake openssl curl wget autoconf automake libtool yaml-cpp
+    OPENSSL_OPTS="-DOPENSSL_ROOT_DIR=$(brew --prefix openssl)"
+    CURL_OPTS="-DCURL_ROOT_DIR=$(brew --prefix curl)"
+    CURL_SSL_OPTS="--with-openssl=$(brew --prefix openssl)"
+    INSTALLDIR="$(brew --prefix)"
   fi
 
   # Build and install a newer curl (required for OpenTelemetry HTTP exporter)
@@ -64,7 +71,7 @@ before-all = """
   wget -q https://curl.se/download/curl-8.4.0.tar.gz
   tar -xzf curl-8.4.0.tar.gz
   cd curl-8.4.0
-  ./configure --prefix=/usr/local --with-openssl
+  ./configure --prefix=$INSTALLDIR $CURL_SSL_OPTS
   make -j2
   make install
   ldconfig || true
@@ -74,7 +81,7 @@ before-all = """
   wget -q https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz
   tar -xzf protobuf-cpp-3.21.12.tar.gz
   cd protobuf-3.21.12
-  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF
+  cmake -B build -DCMAKE_INSTALL_PREFIX=$INSTALLDIR -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF
   cmake --build build -j2
   cmake --install build
   ldconfig || true
@@ -84,37 +91,46 @@ before-all = """
   wget -q https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
   tar -xf json.tar.xz
   cd json
-  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DJSON_BuildTests=OFF
+  cmake -B build -DCMAKE_INSTALL_PREFIX=$INSTALLDIR -DJSON_BuildTests=OFF
   cmake --build build -j2
   cmake --install build
 
-  # Install OpenTelemetry C++ SDK v1.25 (includes semantic conventions)
+  # Install OpenTelemetry Proto v1.10.0 (includes semantic conventions)
   cd /tmp
-  wget -q https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.25.0.tar.gz
-  tar -xzf v1.25.0.tar.gz
-  cd opentelemetry-cpp-1.25.0
+  wget -q https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v1.10.0.tar.gz
+  tar -xzf v1.10.0.tar.gz
+
+
+  # Install OpenTelemetry C++ SDK v1.26 (includes semantic conventions)
+  cd /tmp
+  wget -q https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.26.0.tar.gz
+  tar -xzf v1.26.0.tar.gz
+  cd opentelemetry-cpp-1.26.0
+
   cmake -B build \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_INSTALL_PREFIX=$INSTALLDIR \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DOTELCPP_PROTO_PATH=/tmp/opentelemetry-proto-1.10.0 \
     -DWITH_OTLP_HTTP=ON \
-    -DWITH_OTLP_GRPC=OFF \
+    -DWITH_OTLP_GRPC=ON \
     -DBUILD_TESTING=OFF \
     -DWITH_EXAMPLES=OFF \
-    -DWITH_BENCHMARK=OFF
+    -DWITH_BENCHMARK=OFF \
+    -DWITH_CONFIGURATION=ON \
+    -DWITH_YAML_CONFIGURATION=ON \
+    -DWITH_YAML=ON \
+    -DOTELCPP_VERSIONED_LIBS=ON \
+    -DBUILD_SHARED_LIBS=ON
+
   cmake --build build -j2
   cmake --install build
 
   # Save compiled artifacts to cache
   mkdir -p "$CACHE/usr"
-  cp -a /usr/local/. "$CACHE/usr/"
+  cp -a $INSTALLDIR/. "$CACHE/usr/"
   touch "$STAMP"
 
   # Clean up source tarballs
   cd /
   rm -rf /tmp/*
-"""
-
-[tool.cibuildwheel.macos]
-before-all = """
-  brew install opentelemetry-cpp
 """
