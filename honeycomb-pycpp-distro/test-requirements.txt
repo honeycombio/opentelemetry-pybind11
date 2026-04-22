@@ -10,4 +10,4 @@ typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
 opentelemetry-instrumentation
--e opentelemetry-cpp-distro
+-e honeycomb-pycpp-distro
