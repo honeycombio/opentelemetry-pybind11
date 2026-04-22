@@ -12,6 +12,6 @@ from opentelemetry.util._importlib_metadata import (
 class TestDistribution(TestCase):
     def test_package_available(self):
         try:
-            version("opentelemetry-cpp-distro")
+            version("honeycomb-pycpp-distro")
         except PackageNotFoundError:
-            self.fail("opentelemetry-cpp-distro not installed")
+            self.fail("honeycomb-pycpp-distro not installed")
