@@ -1,146 +1,85 @@
-# OpenTelemetry C++ Python Bindings
+# honeycomb-pycpp
 
 [![OSS Lifecycle](https://img.shields.io/osslifecycle/honeycombio/honeycomb-pycpp?color=success)](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md)
 [![Build](https://github.com/honeycombio/honeycomb-pycpp/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/honeycombio/honeycomb-pycpp/actions/workflows/build-wheels.yml)
 
-Python bindings for the OpenTelemetry C++ SDK, providing high-performance tracing capabilities through a Pythonic interface. This library is **experimental**.
+Python bindings for the OpenTelemetry C++ SDK. Provides high-performance tracing via a Pythonic interface, and ships as an OpenTelemetry [distro](https://opentelemetry.io/docs/concepts/distributions/) for drop-in use with auto-instrumentation.
 
-## Prerequisites
-
-### System Dependencies
-
-1. **OpenTelemetry C++ SDK**
-   ```bash
-   # macOS
-   brew install opentelemetry-cpp
-
-   # Ubuntu/Debian
-   sudo apt-get install libopentelemetry-dev
-
-   # From source
-   git clone https://github.com/open-telemetry/opentelemetry-cpp.git
-   cd opentelemetry-cpp
-   mkdir build && cd build
-   cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-         -DWITH_OTLP_HTTP=ON \
-         -DBUILD_TESTING=OFF \
-         ..
-   make -j
-   sudo make install
-   ```
-
-2. **Python dev dependencies**
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
+This library is **experimental**.
 
 ## Installation
 
-### From Source
+```bash
+pip install honeycomb-pycpp
+```
+
+The wheel bundles the OpenTelemetry C++ SDK — no system-level dependencies required.
+
+## Configuration
+
+The SDK is configured via a YAML file following the [OpenTelemetry Configuration File Format](https://opentelemetry.io/docs/specs/otel/configuration/file-configuration/). A default config is embedded in the package and used when no override is provided.
+
+| Environment variable | Description |
+|---|---|
+| `OTEL_CONFIG_FILE` | Path to a custom configuration YAML. Overrides the embedded default. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint (default: `http://localhost:4318`) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Headers to send with OTLP requests |
+| `OTEL_RESOURCE_ATTRIBUTES` | Comma-separated resource attributes |
+| `OTEL_SERVICE_NAME` | Service name |
+
+## Usage
+
+### As a distro (auto-instrumentation)
 
 ```bash
-# Clone the repository
+opentelemetry-instrument --service-name my-service python app.py
+```
+
+The distro registers itself automatically via entry points — no code changes required.
+
+### Programmatic use
+
+```python
+import otel_cpp_tracer as otel
+
+# Initialize from config file (or uses embedded default)
+provider = otel.TracerProvider("path/to/otel.yaml")
+
+tracer = provider.get_tracer("my-tracer")
+
+with tracer.start_as_current_span("my-span") as span:
+    span.set_attribute("key", "value")
+    # ... do work ...
+```
+
+## Current limitations
+
+- Tracing only — metrics and logs are not yet supported
+- Links require OpenTelemetry C++ ABI v2 (not yet enabled)
+
+## Building from source
+
+Requirements: Python >= 3.10, CMake >= 3.15, C++17 compiler.
+
+```bash
 git clone https://github.com/honeycombio/honeycomb-pycpp
 cd honeycomb-pycpp
-
-# Install in development mode
+pip install -r requirements-dev.txt
 pip install -e .
-
-# Or build and install
-pip install .
 ```
 
-### Building
-
-The build process uses CMake through setuptools:
+To rebuild after C++ changes:
 
 ```bash
-python -m pip wheel . --wheel-dir=./build --no-deps -v
-
-# Or use pip
-pip install -v .
-```
-
-## Project Structure
-
-```
-honeycomb-pycpp/
-├── CMakeLists.txt           # CMake build configuration
-├── pyproject.toml           # Python project metadata
-├── setup.py                 # Build script
-├── include/
-│   └── tracer_wrapper.h     # C++ wrapper headers
-├── src/
-│   ├── tracer_wrapper.cpp   # C++ wrapper implementation
-│   └── bindings.cpp         # pybind11 bindings
-├── examples/
-│   └── basic_tracing.py     # Example usage
-└── README.md                # This file
-```
-
-## Development
-
-### Building for Development
-
-```bash
-# Install in editable mode
-pip install -e .
-
-# Rebuild after C++ changes
 pip install -e . --force-reinstall --no-deps
 ```
 
-### Requirements
-
-- Python >= 3.10
-- CMake >= 3.15
-- C++17 compatible compiler
-- OpenTelemetry C++ SDK
-- pybind11 >= 2.10.0
-
-### Troubleshooting
-
-Running pip install is failing
+To clean up cmake artifacts:
 
 ```bash
-# clean up cmake cache files
 rm -rf CMakeCache.txt CMakeFiles/ cmake_install.cmake build/ dist/ *.egg-info/ *.so
-
-# Install in editable mode
-pip install -e .
 ```
-
-## Performance Considerations
-
-- The C++ SDK provides better performance than pure Python implementations
-- Use the OTLP exporter with batch processing for production workloads
-- Console exporter is useful for development and debugging
-- Remember to call `provider.shutdown()` to flush buffered spans
-
-## Limitations
-
-- Only HTTP OTLP exporter is currently supported (not gRPC)
-- Metrics and logs are not yet supported (tracing only)
-- Links are not supported yet, requires an update to OTel C++'s ABI v2
-
-## Future Enhancements
-
-- [ ] Baggage propagation
-- [ ] Metrics and logs support
-- [ ] gRPC OTLP exporter
-- [ ] Sampling configuration
-- [ ] Custom span processors
 
 ## License
 
 Apache License 2.0
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues.
-
-## Related Projects
-
-- [OpenTelemetry C++](https://github.com/open-telemetry/opentelemetry-cpp)
-- [OpenTelemetry Python](https://github.com/open-telemetry/opentelemetry-python)
-- [pybind11](https://github.com/pybind/pybind11)
