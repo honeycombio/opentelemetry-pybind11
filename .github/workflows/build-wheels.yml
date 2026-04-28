@@ -1,5 +1,12 @@
 name: Build Wheels
 
+env:
+  CPP_VERSION: "1.26.0"
+  CURL_VERSION: "8.4.0"
+  OTEL_PROTO_VERSION: "1.10.0"
+  PROTO_VERSION: "3.21.12"
+  JSON_VERSION: "3.12.0"
+
 on:
   push:
     branches: [ main ]
@@ -35,7 +42,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: .cibw-cache/${{ matrix.arch }}
-          key: cibw-otel-deps-curl-8.4.0-protobuf-3.21.12-json-3.11.3-otel-1.26.0-v3
+          key: cibw-otel-deps-curl-${{ env.CURL_VERSION }}-protobuf-${{ env.PROTO_VERSION }}-json-${{ env.JSON_VERSION }}-otel-${{ env.CPP_VERSION }}-v3
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
