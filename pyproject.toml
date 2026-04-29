@@ -52,6 +52,26 @@ before-all = """
     INSTALLDIR="$(brew --prefix)"
   fi
 
+
+  # Install build tools and dependencies (check which package manager is available)
+  if command -v yum &> /dev/null; then
+    # Try cmake first, fall back to cmake3
+    yum install -y cmake gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool yaml-cpp-devel || \
+    yum install -y cmake3 gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool yaml-cpp-devel
+    # Create cmake symlink if only cmake3 exists
+    if [ ! -f /usr/bin/cmake ] && [ -f /usr/bin/cmake3 ]; then
+      ln -sf /usr/bin/cmake3 /usr/bin/cmake
+    fi
+  elif command -v apt-get &> /dev/null; then
+    apt-get update
+    apt-get install -y cmake g++ libssl-dev libcurl4-openssl-dev zlib1g-dev wget autoconf automake libtool libyaml-cpp-dev
+  elif command -v brew &> /dev/null; then
+    brew install cmake openssl curl wget autoconf automake libtool yaml-cpp grpc
+    OPENSSL_OPTS="-DOPENSSL_ROOT_DIR=$(brew --prefix openssl)"
+    CURL_OPTS="-DCURL_ROOT_DIR=$(brew --prefix curl)"
+    CURL_SSL_OPTS="--with-openssl=$(brew --prefix openssl)"
+  fi
+
   # Per-arch cache: /project is the workspace mount inside Linux containers;
   # $GITHUB_WORKSPACE is used on macOS where the script runs on the host directly.
   if [ -d "/cibw-cache" ]; then
@@ -73,25 +93,6 @@ before-all = """
     exit 0
   fi
   echo "Cache miss for $ARCH — building from source"
-
-  # Install build tools and dependencies (check which package manager is available)
-  if command -v yum &> /dev/null; then
-    # Try cmake first, fall back to cmake3
-    yum install -y cmake gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool yaml-cpp-devel || \
-    yum install -y cmake3 gcc-c++ openssl-devel libcurl-devel zlib-devel wget tar autoconf automake libtool yaml-cpp-devel
-    # Create cmake symlink if only cmake3 exists
-    if [ ! -f /usr/bin/cmake ] && [ -f /usr/bin/cmake3 ]; then
-      ln -sf /usr/bin/cmake3 /usr/bin/cmake
-    fi
-  elif command -v apt-get &> /dev/null; then
-    apt-get update
-    apt-get install -y cmake g++ libssl-dev libcurl4-openssl-dev zlib1g-dev wget autoconf automake libtool libyaml-cpp-dev
-  elif command -v brew &> /dev/null; then
-    brew install cmake openssl curl wget autoconf automake libtool yaml-cpp grpc
-    OPENSSL_OPTS="-DOPENSSL_ROOT_DIR=$(brew --prefix openssl)"
-    CURL_OPTS="-DCURL_ROOT_DIR=$(brew --prefix curl)"
-    CURL_SSL_OPTS="--with-openssl=$(brew --prefix openssl)"
-  fi
 
   # Build and install a newer curl (required for OpenTelemetry HTTP exporter)
   cd /tmp
