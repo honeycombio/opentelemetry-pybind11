@@ -33,9 +33,6 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 "honeycomb.pycpp.distro" = ["embedded/otel.yaml", "py.typed"]
 
-[tool.cibuildwheel.linux]
-container-engine = {name = "docker", create-args = ["-v", "{env:GITHUB_WORKSPACE}/.cibw-cache:/cibw-cache:rw"]}
-
 [tool.cibuildwheel]
 build = ["cp310-*"]
 skip = "*-musllinux_*"
