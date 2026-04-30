@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(otel_cpp_tracer VERSION 0.1.0 LANGUAGES CXX)
+project(otel_cpp_tracer VERSION 0.1.1 LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
