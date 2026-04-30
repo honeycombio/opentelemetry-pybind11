@@ -18,25 +18,19 @@ on:
 
 jobs:
   build_wheels:
-    name: Build wheels on (${{ matrix.os }})
+    name: Build ${{ matrix.python_version }} wheels on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        python_version: ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+        os: [ubuntu-latest, ubuntu-24.04-arm]
         include:
-          - os: ubuntu-latest
-            arch: x86_64
-            platform: linux
-          - os: ubuntu-24.04-arm
-            arch: arm64
-            platform: linux
           - os: macos-15-intel
             macosx_deployment_target: "15.0"
-            arch: x86_64
-            platform: darwin
+            python_version: "cp314-*"
           - os: macos-14
             macosx_deployment_target: "14.0"
-            arch: arm64
-            platform: darwin
+            python_version: "cp314-*"
 
     steps:
       - uses: actions/checkout@v6
@@ -45,13 +39,14 @@ jobs:
 
       - uses: actions/cache@v5
         with:
-          path: .cibw-cache/${{ matrix.platform }}-${{ matrix.arch }}
-          key: cibw-otel-deps-curl-${{ env.CURL_VERSION }}-protobuf-${{ env.PROTO_VERSION }}-json-${{ env.JSON_VERSION }}-otel-${{ env.CPP_VERSION }}-v3
+          path: .cibw-cache/${{ matrix.os }}
+          key: cibw-otel-deps-curl-${{ env.CURL_VERSION }}-protobuf-${{ env.PROTO_VERSION }}-json-${{ env.JSON_VERSION }}-otel-${{ env.CPP_VERSION }}-v4
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
-          ARCH: ${{ matrix.platform }}-${{ matrix.arch }}
+          CIBW_BUILD: ${{ matrix.python_version }}
+          ARCH: /${{ matrix.os }}
           CPP_VERSION: ${{ env.CPP_VERSION }}
           CURL_VERSION: ${{ env.CURL_VERSION }}
           OTEL_PROTO_VERSION: ${{ env.OTEL_PROTO_VERSION }}
@@ -59,6 +54,7 @@ jobs:
           JSON_VERSION: ${{ env.JSON_VERSION }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macosx_deployment_target }}
           PIP_ONLY_BINARY: cmake
+          CIBW_CONTAINER_ENGINE: "docker; create_args: -v ${{ github.workspace }}/.cibw-cache:/cibw-cache:rw"
 
       - name: Upload wheels as artifacts
         uses: actions/upload-artifact@v7
